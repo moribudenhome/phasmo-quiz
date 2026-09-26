@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ファスモ特徴クイズ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap">
+<style>
+  :root{
+    --bg:#0d1017; --panel:#161c28; --panel2:#1b2333; --line:#273042;
+    --text:#dbe2ee; --dim:#8b96ab; --accent:#5ee6b0; --accent-dim:#2c5c4a;
+    --wrong:#ff6b6b; --warn:#e8c268;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
+    font-size:15px; line-height:1.7;
+    padding-block:24px; padding-inline:16px;
+  }
+  .wrap{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:16px}
+
+  header h1{
+    font-family:"DotGothic16",monospace; font-size:28px; margin:0;
+    letter-spacing:.04em; color:var(--accent); text-wrap:balance;
+    text-shadow:0 0 18px rgba(94,230,176,.35);
+  }
+  header p{margin:4px 0 0; color:var(--dim); font-size:13px}
+
+  .tabs{display:flex; gap:8px}
+  .tab{
+    font-family:"DotGothic16",monospace; font-size:15px; letter-spacing:.06em;
+    background:var(--panel); color:var(--dim); border:1px solid var(--line);
+    border-radius:8px; padding:8px 20px; cursor:pointer;
+  }
+  .tab:hover{color:var(--text)}
+  .tab.active{background:var(--accent); color:#08120d; border-color:var(--accent)}
+  .tab:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+  .stat{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:8px 10px; text-align:center;
+  }
+  .stat .v{font-family:"DotGothic16",monospace; font-size:22px; color:var(--accent); font-variant-numeric:tabular-nums}
+  .stat .l{font-size:11px; color:var(--dim); letter-spacing:.08em}
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:20px;
+  }
+  .chiprow{display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap}
+  .chip{
+    font-size:11px; letter-spacing:.1em; padding:2px 10px; border-radius:999px;
+    border:1px solid var(--line); color:var(--dim); background:var(--panel2);
+  }
+  .chip.hunt{color:var(--wrong); border-color:#5c2c2c}
+  .qno{font-size:11px; color:var(--dim); letter-spacing:.1em; margin-left:auto}
+  .question{font-size:17px; font-weight:600; margin:0 0 16px; text-wrap:balance; white-space:pre-line}
+
+  .answers{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  @media (max-width:520px){ .answers{grid-template-columns:1fr} }
+  .ans{
+    font-family:inherit; font-size:15px; text-align:left;
+    background:var(--panel2); color:var(--text);
+    border:1px solid var(--line); border-radius:8px;
+    padding:12px 14px; cursor:pointer; transition:border-color .12s, background .12s;
+  }
+  .ans:hover:not(:disabled){border-color:var(--accent); background:#1e2a3c}
+  .ans:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .ans:disabled{cursor:default; opacity:.75}
+  .ans.correct{border-color:var(--accent); background:var(--accent-dim); color:#eafff6; opacity:1}
+  .ans.wrong{border-color:var(--wrong); background:#4a2626; color:#ffe3e3; opacity:1}
+  .ans.idk{
+    grid-column:1/-1; text-align:center; color:var(--dim);
+    background:transparent; border-style:dashed;
+    font-family:"DotGothic16",monospace; letter-spacing:.08em;
+  }
+  .ans.idk:hover:not(:disabled){color:var(--warn); border-color:var(--warn); background:transparent}
+
+  .feedback{margin-top:16px; border-top:1px dashed var(--line); padding-top:14px}
+  .verdict{font-family:"DotGothic16",monospace; font-size:20px; margin:0 0 6px}
+  .verdict.ok{color:var(--accent)} .verdict.ng{color:var(--wrong)}
+  .expl{margin:0; color:var(--dim); font-size:14px}
+  .expl b{color:var(--text)}
+  .qrecord{
+    margin:10px 0 0; font-size:13px; color:var(--dim);
+    font-variant-numeric:tabular-nums;
+  }
+  .qrecord b{color:var(--accent)}
+
+  .nextrow{display:flex; gap:10px; margin-top:16px}
+  .btn{
+    font-family:"DotGothic16",monospace; font-size:16px; letter-spacing:.06em;
+    background:var(--accent); color:#08120d; border:none; border-radius:8px;
+    padding:10px 22px; cursor:pointer;
+  }
+  .btn:hover{filter:brightness(1.1)}
+  .btn:focus-visible{outline:2px solid var(--text); outline-offset:2px}
+  .btn.ghostbtn{background:transparent; color:var(--dim); border:1px solid var(--line); font-size:13px}
+  .btn.ghostbtn:hover{color:var(--text); border-color:var(--dim)}
+
+  /* ===== 理解度画面 ===== */
+  .overview{
+    display:flex; gap:16px; align-items:center; flex-wrap:wrap;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 18px;
+  }
+  .overview .big{font-family:"DotGothic16",monospace; font-size:34px; color:var(--accent); font-variant-numeric:tabular-nums}
+  .overview .sub{font-size:12px; color:var(--dim)}
+  .glist{display:flex; flex-direction:column; gap:8px}
+  details.gcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  }
+  details.gcard summary{
+    list-style:none; cursor:pointer; padding:12px 16px;
+    display:grid; grid-template-columns:auto auto 1fr auto; gap:12px; align-items:center;
+  }
+  details.gcard summary::-webkit-details-marker{display:none}
+  details.gcard summary::before{
+    content:"▸"; color:var(--dim); font-size:13px; width:1em;
+  }
+  details.gcard[open] summary::before{content:"▾"; color:var(--accent)}
+  details.gcard summary:focus-visible{outline:2px solid var(--accent); outline-offset:-2px; border-radius:10px}
+  .gname{font-family:"DotGothic16",monospace; font-size:16px; min-width:9.5em}
+  .gbarwrap{display:flex; flex-direction:column; gap:4px; min-width:120px}
+  .gbar{height:8px; border-radius:4px; background:var(--panel2); border:1px solid var(--line); overflow:hidden}
+  .gbar i{display:block; height:100%; background:var(--accent)}
+  .gsub{font-size:11px; color:var(--dim); font-variant-numeric:tabular-nums}
+  .gpct{
+    font-family:"DotGothic16",monospace; font-size:20px; min-width:3.2em; text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  .lv-hi{color:var(--accent)} .lv-mid{color:var(--warn)} .lv-lo{color:var(--wrong)} .lv-none{color:var(--dim)}
+  .gdetail{border-top:1px dashed var(--line); padding:10px 16px 14px; display:flex; flex-direction:column; gap:6px}
+  .qrow{display:grid; grid-template-columns:1.6em 1fr auto; gap:8px; font-size:13px; align-items:baseline}
+  .qrow .mark{font-family:"DotGothic16",monospace; text-align:center}
+  .qrow .txt{color:var(--dim)}
+  .qrow .cnt{color:var(--dim); font-variant-numeric:tabular-nums; white-space:nowrap}
+  .qrow.hunt .txt::before{content:"⚠ "; color:var(--wrong)}
+  .seclabel{
+    font-family:"DotGothic16",monospace; font-size:14px; color:var(--dim);
+    letter-spacing:.1em; margin:8px 0 0;
+  }
+
+  footer{color:var(--dim); font-size:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap}
+  @media (prefers-reduced-motion:no-preference){
+    .card{animation:pop .18s ease-out}
+    @keyframes pop{from{transform:translateY(4px); opacity:.6} to{transform:none; opacity:1}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ファスモ特徴クイズ</h1>
+    <p>証拠(EMF・DOTS等)以外の固有特徴だけで当てる。全30ゴースト収録・毎回ランダム出題。データは日本語非公式Wiki準拠。</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" id="tabQuiz">クイズ</button>
+    <button class="tab" id="tabMastery">理解度</button>
+  </nav>
+
+  <!-- ===== クイズ画面 ===== -->
+  <div id="viewQuiz" style="display:flex; flex-direction:column; gap:16px">
+    <div class="stats">
+      <div class="stat"><div class="v" id="stCorrect">0</div><div class="l">正解</div></div>
+      <div class="stat"><div class="v" id="stTotal">0</div><div class="l">出題</div></div>
+      <div class="stat"><div class="v" id="stStreak">0</div><div class="l">連続正解</div></div>
+      <div class="stat"><div class="v" id="stBest">0</div><div class="l">ベスト連続</div></div>
+    </div>
+
+    <div class="card" id="card">
+      <div class="chiprow">
+        <span class="chip" id="chipCat">カテゴリ</span>
+        <span class="chip" id="chipType">形式</span>
+        <span class="qno" id="qno">Q1</span>
+      </div>
+      <p class="question" id="qtext">…</p>
+      <div class="answers" id="answers"></div>
+      <div class="feedback" id="feedback" hidden>
+        <p class="verdict" id="verdict"></p>
+        <p class="expl" id="expl"></p>
+        <p class="qrecord" id="qrecord"></p>
+        <div class="nextrow">
+          <button class="btn" id="nextBtn">次の問題 ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 理解度画面 ===== -->
+  <div id="viewMastery" style="display:none; flex-direction:column; gap:16px">
+    <div class="overview">
+      <div>
+        <div class="big" id="ovPct">0%</div>
+        <div class="sub">総合習得度 ── 各問題を3回連続正解で「習得」</div>
+      </div>
+      <div style="flex:1; min-width:180px">
+        <div class="gbar" style="height:10px"><i id="ovBar" style="width:0%"></i></div>
+        <div class="sub" id="ovSub" style="margin-top:6px">-</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+      <p class="seclabel" style="margin:0">ゴーストごとの習得状況(クリックで問題別の内訳)</p>
+      <button class="btn ghostbtn" id="expandAllBtn">すべて展開</button>
+    </div>
+    <div class="glist" id="glist"></div>
+    <p class="seclabel">共通知識</p>
+    <div class="glist" id="glistCommon"></div>
+  </div>
+
+  <footer>
+    <span>正答率: <b id="stRate">-</b> ｜ 成績はこのブラウザに保存されます</span>
+    <button class="btn ghostbtn" id="resetBtn">成績リセット</button>
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+// ===== ゴースト一覧(30体) 表記は日本語非公式Wiki準拠 =====
+const GHOSTS = [
+  "スピリット","レイス","ファントム","ポルターガイスト","バンシー","ジン",
+  "メアー","レヴナント","シェード","デーモン","幽霊","鬼",
+  "妖怪","ハントゥ","御霊","マイリング","怨霊","ツインズ",
+  "雷獣","化け狐","ミミック","モーロイ","デオヘン","セーイ",
+  "ダヤン","ガルル","オバンボ","コルモス","アスワング","ディルデガスト"
+];
+const COMMON = "共通知識";
+
+// ===== 特徴データベース(日本語非公式Wiki準拠) =====
+// g: 該当ゴースト / t: 特徴文 / cat: カテゴリ / hunt: ハント関連
+// n: 解説(実戦での使い方) / ex: 誤答選択肢から除外する紛らわしいゴースト
+const FACTS = [
+  // スピリット
+  {g:["スピリット"], cat:"アイテム対策", t:"浄化香を当てられると180秒間ハントを起こせなくなる(通常のゴーストは90秒)",
+   n:"【基準】浄化香のハント抑止は通常90秒、デーモン60秒、スピリットだけ180秒。浄化香を当てて時間を計り、90秒〜3分の間にハントが来たらスピリット以外が確定。3分間沈黙ならスピリット濃厚(正気度50%以下まで下げてから計ること。高いとそもそもハントできないだけ)。"},
+  // レイス
+  {g:["レイス"], cat:"塩・足跡", t:"塩を一切踏まず、足跡を残さない", ex:["ガルル"],
+   n:"【基準】他の全ゴーストは塩の山を踏んで乱し、直後にUVライトで光る足跡を残す。レイスだけは一切踏まない。入口に塩+モーションセンサーを置き、センサーが反応したのに塩が無事ならレイス確定級(ガルルも激昂状態のみ踏まなくなるので注意)。"},
+  {g:["レイス"], cat:"能力", t:"ランダムなプレイヤーの足元にテレポートし、EMF2またはEMF5を残す能力を持つ", ex:["ファントム","ジン"],
+   n:"【基準】通常EMFはゴーストの干渉があった場所でしか鳴らない。何の干渉もないのに足元でEMFが鳴ったらレイスのテレポート痕。類似能力のファントムはEMF2のみ、ジンはブレーカーの位置で鳴る点で区別できる。"},
+  // ファントム
+  {g:["ファントム"], cat:"能力", t:"ゴースト本体の写真を撮ると姿が消え、写真にノイズも本体も写らない",
+   n:"【基準】通常はゴースト本体を撮影すると姿とノイズが写真に写る。ファントムだけは撮った瞬間に消え、写真に何も写らない。「星3のゴースト写真なのに空っぽ」なら確定級。"},
+  {g:["ファントム"], cat:"能力", t:"姿を直視しているプレイヤーの正気度が急激に低下する",
+   n:"【基準】どのゴーストも姿を見ると正気度は減るが、ファントムは減りが極端に速い。イベント後に見ていた人だけ正気度が激減していたら疑い。姿を見ないよう目を逸らすのが対策。"},
+  {g:["ファントム"], cat:"ハント中", hunt:true, t:"ハント中の実体化時間が非常に短く、姿がほとんど見えない", ex:["鬼","化け狐"],
+   n:"【基準】ハント中のゴーストは点滅しながら実体化して迫ってくる。ファントムは見えている時間が最も短く「足音はするのにほぼ見えない」。逆に最もよく見えるのが鬼。点滅の見え方はファントム/鬼/化け狐の判別に使える。"},
+  {g:["ファントム"], cat:"能力", t:"ランダムなプレイヤーの近くへ移動し、移動完了地点にEMF2を残す能力を持つ", ex:["レイス"],
+   n:"レイスのテレポート(EMF2または5)と似るが、ファントムはEMF2のみ。能力の使用中は他の行動を取れないため、この直後にハントは来ない。"},
+  // ポルターガイスト
+  {g:["ポルターガイスト"], cat:"能力", t:"複数の物を同時に投げ飛ばし、目撃の有無に関係なく近くのプレイヤーの正気度を「物の数×2%」下げる",
+   n:"【基準】通常のゴーストは物を1個ずつしか投げない。複数の小物が一斉に吹き飛んだらほぼポルターガイスト。ゴーストルームに小物をまとめて置いておくと発動確認しやすい。"},
+  {g:["ポルターガイスト"], cat:"ハント中", hunt:true, t:"ハント中、範囲内の物を0.5秒ごとに100%の確率で投げる(通常のゴーストは50%)",
+   n:"【基準】ハント中はどのゴーストも0.5秒ごとに50%で物を投げるが、ポルターガイストは100%=通り道の物が必ず全部飛ぶ。他のゴーストが偶然50%を連続で引くこともあるので複数回確認を。"},
+  {g:["ポルターガイスト"], cat:"行動", t:"投げられる物が周囲に無いと能力が発動できず、ほぼ無力化する",
+   n:"投げ能力が本体なので、部屋の小物を全部外へ運び出すとほぼ何もできなくなる。対策で無力化が成立する唯一のゴースト。"},
+  // バンシー
+  {g:["バンシー"], cat:"行動", t:"ターゲットを1人に定め、そのプレイヤーの正気度だけを基準にハントを開始する",
+   n:"【基準】通常のハントは「全員の平均正気度50%以下」で発生する。バンシーだけはターゲット1人の正気度しか見ない。チーム平均が高いのにハントが来たら、ターゲットだけ削れている可能性。誰が追われているか把握しておくこと。"},
+  {g:["バンシー"], cat:"行動", t:"指向性マイクやサウンドレコーダーで、固有の金切り声(叫び声)を拾えることがある", ex:["マイリング","デオヘン","モーロイ"],
+   n:"【基準】指向性マイクの怪奇音は通常ささやきやうめき声。バンシーは約33%で固有の金切り声を出し、聞けた時点で確定。ハントを起こさず特定できる安全な方法。"},
+  {g:["バンシー"], cat:"ハント中", hunt:true, t:"ハント中はターゲットだけを追い、ターゲット以外はすれ違っても触れても死なない(ターゲットがエリア内にいる間)",
+   n:"【基準】通常のゴーストはハント中、見つけた誰でも殺す。バンシーだけはターゲット以外を無視する。全員エリア内で、確実に視認されたのに見向きもされなければ確定。ただしターゲットがエリア外だと通常ハント化して誰でも死ぬ。"},
+  {g:["バンシー"], cat:"行動", t:"女性としてのみ出現する(v0.15.1.0〜)", ex:["ダヤン"],
+   n:"【基準】ゴーストの性別は通常50%ずつのランダム。バンシーとダヤンだけ女性固定なので、モデルか名前(ファーストネーム)が男性なら両者を除外できる。"},
+  // ジン
+  {g:["ジン"], cat:"移動速度", hunt:true, t:"ブレーカーがONの時、プレイヤーが近くにいない場合は2.5m/sで高速接近する(近づくと通常速度)", ex:["雷獣","ハントゥ","レヴナント","ディルデガスト"],
+   n:"【基準】通常のハント速度は1.7m/s。ジンはブレーカーON+プレイヤーが遠い時だけ2.5m/sで詰めてきて、目の前では1.7m/sに戻る。ブレーカーを切れば高速移動も特殊能力も無効化できるのが最大の対策。"},
+  {g:["ジン"], cat:"行動", t:"ブレーカーを直接OFFにすることが原則ない", ex:["ハントゥ"],
+   n:"【基準】多くのゴーストはブレーカーを落とすことがある。ジンだけは原則落とさないので、落ちたらジンをほぼ除外できる(逆によく落ちるならハントゥ疑い)。部屋の照明を消すのは別物なので混同しないこと。"},
+  {g:["ジン"], cat:"能力", t:"同室または3m以内のプレイヤーの正気度を25%減らし、ブレーカーにEMF2または5を残す能力を持つ(ブレーカーON時のみ)",
+   n:"正気度25%の急減はジン・怨霊系イベントを除けば異常な量(通常のイベントは10%程度)。急減+誰もいないブレーカーでのEMF反応が揃ったらジン。ブレーカーにEMFリーダーを置いておくと検出できる。"},
+  // メアー
+  {g:["メアー"], cat:"ハント条件", hunt:true, t:"照明が消えた場所では正気度60%から、点いた場所では40%からハントを開始する",
+   n:"【基準】通常のハント閾値は50%。メアーは暗所60%(早く来る)/明所40%(来にくい)。部屋の照明を点けておくだけで安全度が上がり、正気度40〜50%で照明ON中にハントが来たらメアー除外という判別もできる。"},
+  {g:["メアー"], cat:"行動", t:"照明を自分から点けることがなく、超常現象での電球破壊率が他より高い",
+   n:"【基準】他のゴーストは照明を点けることもある。メアーは絶対に点けないので、ゴーストが照明を点けた時点でメアー除外。電球がパンパン割れるならメアー疑い。"},
+  {g:["メアー"], cat:"能力", t:"4m以内で照明をONにされた瞬間、低確率で即座にOFFにする能力を持つ",
+   n:"スイッチを入れた瞬間に消し返してくるのはメアー固有の能力。スイッチごとに約10秒のクールタイムがあるので連打での強制発動はできない。テレビやPCの電源でも発動する。"},
+  // レヴナント
+  {g:["レヴナント"], cat:"移動速度", hunt:true, t:"ハント中、プレイヤーを発見すると3m/s(最速級)、見失うと1m/sまで低下する", ex:["デオヘン","ディルデガスト"],
+   n:"【基準】通常のゴーストは1.7m/sから視認で徐々に加速する。レヴナントは発見時いきなり3m/s・見失うと1m/s(最遅)と極端で、視認加速はしない。電子機器や声の感知でも加速する(v0.8〜)。走っても撒けないので即隠れるのが正解、隠れれば徒歩以下になる。"},
+  // シェード
+  {g:["シェード"], cat:"行動", t:"プレイヤーが同じ部屋にいると、ゴーストライティングと徘徊を除き超常現象やEMF干渉をほぼ起こさない",
+   n:"【基準】通常のゴーストは人がいても普通に干渉する(鬼はむしろ活発化)。部屋に居座っているのに全然証拠が出ないならシェード疑い。カメラを置いて全員部屋を出ると動き出す。ブードゥー人形でも干渉を強制できない。"},
+  {g:["シェード"], cat:"ハント条件", hunt:true, t:"プレイヤーが同じ部屋にいる間は正気度に関わらずハントを開始できない",
+   n:"【基準】通常のゴーストは正気度条件さえ満たせばどこからでもハントする。シェードだけは同室に人がいると開始できないので、ゴーストルームの中に立っていればハント自体が始まらない。"},
+  {g:["シェード"], cat:"行動", t:"正気度が下がるほど活動的になり、平均50%で通常のゴースト並みに超常現象を起こすようになる",
+   n:"【基準】通常のゴーストの活動量は正気度と無関係。シェードは序盤静か→正気度が下がると活発化する変化がヒント。なお超常現象で歌を歌うことはない。"},
+  {g:["シェード"], cat:"行動", t:"呪いのアイテムで実体化させると、稀に黒い影の姿で現れる",
+   n:"【基準】通常のゴーストは実体化すると本来の姿で現れる。魔法陣・オルゴール・猿の手で実体化した姿が黒い影だったらシェード確定。"},
+  // デーモン
+  {g:["デーモン"], cat:"ハント条件", hunt:true, t:"正気度70%からハントでき、さらに特殊能力で正気度を無視したハントを起こせる",
+   n:"【基準】通常のハント閾値は50%。デーモンは70%からで、能力を使えば100%でも来る。平均80%以上でハントが来たらソロならデーモン確定(マルチはバンシーの標的が削れている可能性あり)。能力ハントも十字架や浄化香で防げる。"},
+  {g:["デーモン"], cat:"ハント中", hunt:true, t:"ハント終了後のクールダウンが20秒と通常(25秒)より短い",
+   n:"【基準】ハント終了から次のハントまで通常25秒空く。デーモンは20秒なので、ハント間隔が20〜25秒だったらデーモン確定。ストップウォッチで計るのが確実。"},
+  {g:["デーモン"], cat:"アイテム対策", t:"十字架の有効範囲が1.5倍(通常3〜5mに対し4.5〜7.5m)",
+   n:"【基準】十字架の範囲はTier1で3m、Tier3で5m。デーモンにはその1.5倍で効くので、置き位置が多少ズレても保険になる。"},
+  {g:["デーモン"], cat:"アイテム対策", t:"浄化香によるハント抑止時間が60秒と通常(90秒)より短い", ex:["スピリット"],
+   n:"【基準】浄化香の抑止は通常90秒・スピリット180秒・デーモン60秒。浄化香を当てて60〜90秒の間にハントが来たらデーモン確定。スピリットと正反対の判別法。"},
+  // 幽霊
+  {g:["幽霊"], cat:"能力", t:"扉に2連続で干渉して勢いよく閉め、7.5m以内のプレイヤーの正気度を15%下げる能力を持つ(EMF2が出る)",
+   n:"【基準】扉を勢いよく閉めるだけならどのゴーストもやる。幽霊固有なのは0.04秒間隔の「2連続」干渉+正気度15%減。開いている扉が必要なので、幽霊が候補ならルーム付近の扉を開けておく。超常現象もハントも無いのに玄関が閉まったら幽霊(かその真似のミミック)確定。"},
+  {g:["幽霊"], cat:"アイテム対策", t:"非ハント時に浄化香を当てると、90秒間部屋に閉じ込められて徘徊しなくなる",
+   n:"【基準】浄化香は通常「ハントを90秒防ぐ」だけで移動は制限しない。幽霊にだけは追加で90秒間部屋から出られなくなる効果がある。焚いた後に徘徊がピタッと止まったら幽霊の傾向。"},
+  // 鬼
+  {g:["鬼"], cat:"行動", t:"人が近くにいるほど活発になり、超常現象の頻度が高い",
+   n:"【基準】通常のゴーストの活動量は人の有無と無関係(シェードは逆に萎縮する)。そばにいるほど派手に動くのは鬼。証拠がすぐ出揃うのに決め手がない時に疑う。"},
+  {g:["鬼","コルモス"], cat:"行動", t:"白い靄(ゴーストミスト)の超常現象を起こさない",
+   n:"【基準】超常現象の出現形態は「姿」「影」「白い靄」の3種があり、どのゴーストも起こしうる。鬼とコルモスだけは靄を出さないので、靄を一度でも見たら両者を除外できる。"},
+  {g:["鬼"], cat:"ハント中", hunt:true, t:"ハント中に消えている時間が短く、姿がはっきり見えている時間が長い", ex:["ファントム","化け狐"],
+   n:"【基準】ハント中のゴーストは点滅し、見え方は普通ランダム。鬼は最もよく見え、ファントムは最も見えない、と両極端。やたらはっきり見えるなら鬼。視認加速はあるのでチェイス注意。"},
+  {g:["鬼"], cat:"能力", t:"超常現象でゴーストに触れられた時の正気度減少が2倍の20%になる(通常10%)",
+   n:"【基準】接触イベントの正気度減少は通常10%。触られた人が20%減っていたら鬼。ジャーナルや腕時計で減少量を確認する。"},
+  // 妖怪
+  {g:["妖怪"], cat:"ハント条件", hunt:true, t:"平均正気度80%以下の時、ゴーストの近く(2m以内)で声を出すとハントを仕掛けてくることがある",
+   n:"【基準】通常は平均50%以下でしかハントが来ない。妖怪だけは80%以下で近くの声に反応してハントすることがある。正気度が十分高いのにスピリットボックスやボイチャ使用中にハントが来たら妖怪の可能性大。"},
+  {g:["妖怪"], cat:"ハント中", hunt:true, t:"ハント中の声・電子機器の感知範囲が2.5mしかない(通常は9m)",
+   n:"【基準】ハント中のゴーストは通常9m先の声や電子機器まで感知して寄ってくる。妖怪は2.5mなので、少し離れて黙っていればまず見つからない。近くに来た時に音を出して反応するかで判別(数回試して精度を上げる)。"},
+  // ハントゥ
+  {g:["ハントゥ"], cat:"移動速度", hunt:true, t:"室温が低いほどハント速度が上がる(15℃以上1.4m/s〜氷点下2.7m/s)。視認加速はしない", ex:["ジン","雷獣"],
+   n:"【基準】通常のゴーストは1.7m/s+視認加速。ハントゥは室温だけで速度が決まり、暖かければ通常より遅い1.4m/s、氷点下では2.7m/s。ブレーカーONで暖めるのが対策だが、ゴーストのいる部屋は徐々に冷えるので同じ部屋で逃げ続けると加速していく。"},
+  {g:["ハントゥ"], cat:"行動", t:"ブレーカーをONにすることがなく、ブレーカーOFF時は速度が上がる", ex:["ジン"],
+   n:"【基準】他のゴーストはブレーカーを点けることもある。ハントゥは絶対に点けず、OFFの間は速度も上がる。よく落ちるのに誰も点け直していないならハントゥ疑い(絶対に落とさないジンと正反対)。"},
+  {g:["ハントゥ"], cat:"ハント中", hunt:true, t:"ブレーカーがOFFの時、ハント中に口元から白い息を出す",
+   n:"【基準】他のゴーストは白い息を出さない。ブレーカーOFF時のハント中に口元から白い息が見えたらハントゥ確定。確認にはOFF状態でチェイスする必要があるので浄化香を用意しておく。"},
+  // 御霊
+  {g:["御霊"], cat:"行動", t:"D.O.T.S.の姿はビデオカメラ越しにしか見えず、ゴーストルーム内にプレイヤーがいると映らない",
+   n:"【基準】通常のDOTSシルエットは肉眼で直接見える。御霊だけはビデオカメラ越し限定+同室に人がいると映らない。DOTSとカメラを置いて全員退室し、トラックのモニターで監視するのが正解。"},
+  {g:["御霊"], cat:"行動", t:"ゴーストルームを一切変えない(徘徊はする)",
+   n:"【基準】他のゴーストは調査中にゴーストルームを移すことがある。御霊は絶対に変えないので、ルームがずっと固定なら御霊疑い。証拠なし設定ではこれが唯一の手掛かりになる。"},
+  // マイリング
+  {g:["マイリング"], cat:"行動", t:"指向性マイクで怪奇音を頻繁に発する", ex:["バンシー","デオヘン","モーロイ"],
+   n:"【基準】指向性マイクの怪奇音はどのゴーストも出すが、マイリングは頻度が明らかに多い。普段は静かなゴーストなのにマイクだけ賑やかならマイリング。"},
+  {g:["マイリング"], cat:"ハント中", hunt:true, t:"ハント中の足音・声が聞こえる範囲が12mと狭い(通常は20m)",
+   n:"【基準】ハント中の足音・声は通常20m先から聞こえ、電子機器の誤作動は10mから始まる。マイリングは足音が12mからなので、ライトがチカつくのとほぼ同時にやっと足音が聞こえる=「音もなく急に現れた」感覚になる。同じ階層で確認すること。"},
+  // 怨霊
+  {g:["怨霊"], cat:"アイテム対策", t:"4m以内にある火(灯火・キャンプファイヤー等)がある間はハントを開始できず、十字架の代わりになる",
+   n:"【基準】通常、ハントを防げる設置物は十字架だけ。怨霊にだけは火も十字架として機能する。ハント時は十字架より先に火を消すので、火が点いているのに十字架が欠けたら怨霊を除外できる。"},
+  {g:["怨霊"], cat:"ハント条件", hunt:true, t:"火を3回消すごとに、正気度に関係なく必ず特殊ハントを起こす",
+   n:"【基準】通常のハントは正気度50%以下でしか起きない。怨霊は火が3回消えるたびに正気度無視でハントしてくる。灯火1つ置いて消えた回数を数えるのが定番チェック(燃え尽き・投げ捨てはノーカウント。3回目の時に他の火や十字架が近くにあると防がれる)。"},
+  {g:["怨霊"], cat:"行動", t:"死亡したプレイヤーが多いほど火を吹き消す確率が上がる",
+   n:"味方が死ぬほど火が消えるペースが上がり、3回ごとの特殊ハントも加速する。誰か死んだら火の管理をより厳重に。"},
+  // ツインズ
+  {g:["ツインズ"], cat:"行動", t:"2つの干渉範囲を持ち、低確率で離れた2か所でほぼ同時に干渉する",
+   n:"【基準】通常のゴーストは1か所でしか干渉できない。別々の部屋でわずかな時間差でEMFや物音が鳴ったらツインズ。実際は1体が2体分の行動をしているだけで、分身が別の部屋に住んでいるわけではない。"},
+  {g:["ツインズ"], cat:"移動速度", hunt:true, t:"ハント速度が2種類あり、メインは通常の90%(1.53m/s)、サブは110%(1.87m/s)",
+   n:"【基準】通常のハント速度は1.7m/s固定。ツインズは1.53と1.87の2種があり、ハントのたびに足音の速さが違う。モーロイも正気度で速度が変わるため、正気度0%まで下げる(モーロイなら2.25m/s)と判別しやすい。"},
+  {g:["ツインズ"], cat:"アイテム対策", t:"十字架の判定はメイン側にしかなく、サブの位置に置いてもハントを防げない",
+   n:"証拠を出すのも基本メイン(サブはEMF5のみ)。十字架やハント対策はメインの位置基準で考えること。"},
+  // 雷獣
+  {g:["雷獣"], cat:"移動速度", hunt:true, t:"電源の入った電子機器が範囲内(小マップ6m/中8m/大10m)に1個でもあるとハント速度2.5m/s固定になる", ex:["ジン","ハントゥ"],
+   n:"【基準】通常のハント速度は1.7m/s+視認加速。雷獣は範囲内に起動中の電子機器が1個でもあると2.5m/s固定になる(個数を増やしても不変・視認加速なし)。ハント時は装備の電源を切って床に置くのが対策。電子機器のない場所で減速するかで初期セーイ(常時2.75)と区別。"},
+  {g:["雷獣"], cat:"ハント条件", hunt:true, t:"電子機器の近くでは正気度65%からハントを開始できる",
+   n:"【基準】通常のハント閾値は50%。雷獣は起動中の電子機器の近くにいると65%からハントできる。カメラ等を大量設置していると正気度が高いうちからハントが来る(複数置いても65%より上がりはしない)。"},
+  {g:["雷獣"], cat:"ハント中", hunt:true, t:"ハント中に電子機器(懐中電灯・カメラ等)を誤作動させる範囲が約15mと広い(通常は約10m)",
+   n:"【基準】ハント中、ゴーストが近づくと懐中電灯などが約10m以内でチカつく。雷獣は約15mからなので「まだかなり遠いはずなのにライトが乱れ出した」なら雷獣。ただし声の探知範囲は通常と同じ9mなので、呼びかけに来ないからと妖怪と誤認しないこと。"},
+  // 化け狐
+  {g:["化け狐"], cat:"能力", t:"ドア干渉で指紋(紫外線)を残す確率が75%しかない(25%で残らない)",
+   n:"【基準】他のゴーストはドアや窓に触れると必ず指紋を残す。化け狐は4回に1回残さないので「触ったはずなのに指紋がない」が起きたら疑い。証拠としての紫外線自体は隠さない。"},
+  {g:["化け狐"], cat:"能力", t:"6本指の手形など特殊な指紋を残すことがある(スイッチは2本指、Prisonの鉄格子は5本指など)",
+   n:"【基準】通常の指紋は5本指の手形、スイッチは1本指など形が決まっている。指の本数が1本多い指紋が出たらその場で化け狐確定。指紋を見つけたら形をよく観察すること。"},
+  {g:["化け狐"], cat:"能力", t:"指紋の残存時間を半減させる能力を持つ(通常は2分で消える)",
+   n:"【基準】指紋は通常2分残る。化け狐は能力で半分(約1分)に縮め、連続使用でさらに短くなることも。指紋を見つけたら即写真を撮る。"},
+  {g:["化け狐"], cat:"ハント中", hunt:true, t:"ハント中、一定間隔で必ず別のゴーストの姿に変身する(同じ性別のモデルのみ・順番固定)", ex:["ファントム","鬼"],
+   n:"【基準】他のゴーストはハント中ずっと同じ姿。化け狐だけは点滅の合間に見た目が変わるので、変わった瞬間を見たら確定。変身の瞬間は生存プレイヤーにしか見えず、死後の観戦では確認できない。"},
+  // ミミック
+  {g:["ミミック"], cat:"能力", t:"30秒〜2分ごとにランダムなゴーストを選び、特殊能力や特殊ハントまで完全に模倣する",
+   n:"「さっきはレヴナント並みに速かったのに今回は遅い」等、1体ではありえない特徴の変化が最大のヒント。ハント中に真似する対象が変わることはない。"},
+  {g:["ミミック"], cat:"能力", t:"本来の証拠3つに加えて、証拠にならない偽のゴーストオーブが常に見える",
+   n:"【基準】証拠は通常3つしか出ない。ミミックだけはオーブが4つ目として見えるので、証拠3つ+オーブ=確定。ナイトメア(証拠3つ設定)でオーブ含め3個、証拠なし設定でオーブが出た場合も同様に確定。"},
+  // モーロイ
+  {g:["モーロイ"], cat:"能力", t:"スピリットボックスの返答・指向性マイクの怪奇音・サウンドレコーダーの録音を聞いたプレイヤーに、正気度が減り続ける呪いをかける",
+   n:"【基準】通常、照明の点いた場所では正気度は減らない。呪われると明るい場所でも減り続けるので、「明るい所にいたのに精神安定剤が異常にたくさん飲めた」ら呪い確定。精神安定剤で解呪でき、エリア外では一時停止する。"},
+  {g:["モーロイ"], cat:"移動速度", hunt:true, t:"平均正気度が低いほどハント速度が上がる(50%以上で1.5m/s→0%で2.25m/s)。視認加速で最大3.71m/s",
+   n:"【基準】通常のハント速度は正気度と無関係の1.7m/s。モーロイは平均正気度50%以上なら1.7より遅い1.5m/s、0%で2.25m/sまで上がり、視認加速も乗ると3.71m/s(全ゴースト最速)になる。長期戦になるほど危険。"},
+  {g:["モーロイ"], cat:"アイテム対策", hunt:true, t:"ハント中に浄化香を当てた時の目くらまし時間が7.5秒と長い(通常は5秒)",
+   n:"【基準】ハント中に浄化香を当てるとゴーストは通常5秒間プレイヤーを見失う。モーロイは7.5秒。この2.5秒の差で判別でき、逃げる時間も稼ぎやすい。"},
+  // デオヘン
+  {g:["デオヘン"], cat:"ハント中", hunt:true, t:"ハント中、常にプレイヤーの位置を探知しており、隠れてやり過ごすことができない",
+   n:"【基準】通常のゴーストはロッカーやクローゼットに隠れればやり過ごせる。デオヘンだけは位置が常にバレていて一直線に開けに来る。直線距離で最も近いプレイヤーを狙い、ハント途中でターゲットが変わることもある。ターゲット以外も接触すれば死ぬ。"},
+  {g:["デオヘン"], cat:"移動速度", hunt:true, t:"プレイヤーから6mより遠いと3m/s、6m以内に近づくと0.4m/sまで減速する", ex:["レヴナント","ディルデガスト"],
+   n:"【基準】通常のハント速度1.7m/sに対し、遠距離3m/s(最速級)・近距離0.4m/s(プレイヤーの歩きより遅い)と両極端。隠れる対策は無意味だが、隠れずに歩いて距離を保ち続ければ絶対捕まらない。デオヘンだけは「隠れず逃げ回る」が正解。"},
+  {g:["デオヘン"], cat:"行動", t:"スピリットボックスに33%の確率で「ゼーハーゼーハー」という荒い息の特殊ボイスを返す", ex:["バンシー","マイリング"],
+   n:"【基準】スピリットボックスの返答は通常ただの声。デオヘンは3回に1回、荒い息の特殊ボイスを返し、聞けたら確定。反応があるなら特殊ボイスが出るまで喋り続けるのが安全な特定法。"},
+  // セーイ
+  {g:["セーイ"], cat:"能力", t:"プレイヤーと同じ部屋にいると「老化」する(最大10回)。老化ごとにハント閾値-6%・速度-0.175m/s・活動率-15%",
+   n:"【基準】他のゴーストの強さは調査中ずっと一定。セーイだけは1〜2分ごとの老化タイミングに同室に人がいると弱体化していく。入場直後は超活発なのにどんどん大人しくなったらセーイ。"},
+  {g:["セーイ"], cat:"移動速度", hunt:true, t:"初期状態は2.75m/s・閾値75%・活動率200%と最強だが、最大老化で1m/s・15%・50%まで弱体化する", ex:["雷獣"],
+   n:"【基準】通常のゴーストは1.7m/s・閾値50%。初期セーイは2.75m/s・75%と大幅に上回るが、視認加速はしない。老化しきると1m/s・15%でほぼ無害。「序盤だけ地獄、後半は平和」ならセーイ。"},
+  {g:["セーイ"], cat:"行動", t:"ウィジャ盤で年齢を聞くと答え、時間を置いて聞き直すと年齢が増えていることがある",
+   n:"【基準】他のゴーストの享年は変化しない。ウィジャ盤で「何歳?」を時間を置いて聞き直し、数字が増えていたらセーイ確定。老化を直接確認できる唯一の方法。"},
+  // ダヤン
+  {g:["ダヤン"], cat:"ハント条件", hunt:true, t:"10m圏内に動いているプレイヤーがいると閾値65%・速度2.25m/s固定、静止しているプレイヤーのみなら閾値45%・速度1.2m/s固定になる",
+   n:"【基準】通常は閾値50%・速度1.7m/s+視認加速。ダヤンは近くの人の「動き」で強弱が変わる(動き=方向キー入力の判定で、壁に向かって歩いても加速扱い)。ハント中に立ち止まって足音が遅くなればダヤン。マルチでは他人の移動でも加速するので注意。"},
+  {g:["ダヤン"], cat:"行動", t:"女性としてのみ出現する", ex:["バンシー"],
+   n:"【基準】性別は通常50%ずつのランダム。女性固定はバンシーとダヤンだけなので、モデルか名前が男性なら両者を除外できる(元ネタはインドの魔女)。"},
+  // ガルル
+  {g:["ガルル"], cat:"能力", t:"通常→激昂→疲弊の3状態を持ち、防護装備(浄化香・塩・十字架)を使われると状態が変化する",
+   n:"【基準】他のゴーストは防護装備を使われても性質が変わらない。ガルルは浄化香が当たる・塩を踏む・十字架が燃えると激昂し、激昂ハントを終えると疲弊する(時間経過では戻らない)。時間で状態が変わるオバンボとの区別点。"},
+  {g:["ガルル"], cat:"塩・足跡", t:"激昂状態では塩を踏まなくなり、Tier1十字架が無効化される。疲弊状態では逆に防護装備がより効く", ex:["レイス"],
+   n:"【基準】通常のゴーストは常に塩を踏む。急に踏まなくなったらガルルの激昂を疑う。「一切踏まない」レイスとの区別は、防護装備を使った時にハント速度が変わるか(ガルルは変わる)で付けられる。"},
+  {g:["ガルル"], cat:"移動速度", hunt:true, t:"状態によってハント速度と閾値が変化する(通常1.75m/s・50%、激昂1.955m/s・60%、疲弊1.36m/s・40%)",
+   n:"【基準】通常のゴーストのハント速度は常に1.7m/s。ガルルはハント中に浄化香や塩を使うと激昂して速くなるので、隠れていても足音の変化で分かる。激昂ハントの後は著しく遅くなる(疲弊)。"},
+  // オバンボ
+  {g:["オバンボ"], cat:"能力", t:"「穏やか」と「攻撃的」の2状態を時間経過で行き来する(開錠1分後に最初の切替、以降2分ごと)",
+   n:"【基準】他のゴーストの性質は調査中一定(ガルルは防護装備で変化)。オバンボは純粋に時間で切り替わる。状態変化はハント中にも起こり、穏やか時に溜めた視認加速が攻撃的への切替で一気に乗るので急加速に注意。"},
+  {g:["オバンボ"], cat:"ハント条件", hunt:true, t:"穏やか時は閾値10%・速度1.445m/s、攻撃的時は閾値65%・速度1.955m/s。攻撃的ハントは持続時間が0.8倍",
+   n:"【基準】通常は閾値50%・速度1.7m/s。穏やか時の10%は全ゴースト最低で、ほぼハントが来ない。攻撃的な時のハントは通常の8割の長さしかないので、ハント時間を計れれば特定材料になる。"},
+  // コルモス
+  {g:["コルモス"], cat:"ハント中", hunt:true, t:"ほとんど目が見えず、プレイヤーの足音を感知して追跡する(しゃがみ歩き10m/直立歩行20m/走り30m)",
+   n:"【基準】通常のゴーストはハント中プレイヤーを「見て」追いかける。コルモスは見えず、足音だけで追う。視認されても寄ってこないのが最大の特徴(接触すれば死ぬ)。ソロで目の前にいるのに無視されたら確定級。足音の出ないしゃがみ移動が最強の対策。"},
+  {g:["コルモス"], cat:"移動速度", hunt:true, t:"ハント中の基本速度は1.7m/sだが、足音を感知すると2.21m/s固定で追ってくる",
+   n:"【基準】通常のゴーストは「視認」で加速する。コルモスは視認では何も起きず、足音を感知した時だけ1.7→2.21m/sに跳ね上がる。わざと足音を出して急加速したらコルモス。"},
+  {g:["コルモス"], cat:"ハント条件", hunt:true, t:"同じエリアに走っているプレイヤーがいると閾値が70%まで上がる",
+   n:"【基準】通常のハント閾値は50%。コルモスは走る音に反応して70%からハントできるようになる。走り回るだけで早期ハントを招くので、疑いがある現場では歩き・しゃがみ移動を徹底。"},
+  {g:["コルモス"], cat:"行動", t:"歩いて迫ってくる超常現象(疑似ハント)を起こさない",
+   n:"【基準】通常のゴーストは超常現象で歩いて迫ってくることがある(擬似ハント)。コルモスはこれと白い靄を起こさないので、どちらかを見たらコルモスを除外できる。"},
+  // アスワング
+  {g:["アスワング"], cat:"移動速度", hunt:true, t:"ハント開始時は1.53m/sと遅いが、視認加速が速く約17秒で最大速度に達する(通常は約26秒)",
+   n:"【基準】通常のゴーストは1.7m/sから約26秒の視認で最大速度になる。アスワングは初速1.53m/s(通常より遅い)なのに約17秒で最大まで加速する。「最初遅いのに追われるとぐんぐん速くなる」が特徴。初速がほぼ同じツインズのメインとは加速の仕方で見分ける。"},
+  {g:["アスワング"], cat:"ハント中", hunt:true, t:"公式の隠れ場所にいるプレイヤーを見つけて殺す瞬間、ハントが強制終了する",
+   n:"【基準】通常のゴーストは隠れ場所で見つかればそのまま殺される。アスワングだけはキルの瞬間にハントが強制終了する=隠れ場所が実質安地になる。ただし次のハントでは真っ先にそのプレイヤーの元へ向かってくるので油断禁物。"},
+  // ディルデガスト
+  {g:["ディルデガスト"], cat:"移動速度", hunt:true, t:"ハント基本速度が3m/sと全ゴースト最速級で、視認加速はしない", ex:["レヴナント","デオヘン"],
+   n:"【基準】通常の基本速度は1.7m/s。ディルデガストは最初から3m/sで、レヴナントのように見失って減速も、デオヘンのように接近で減速もしない。「条件に関係なくずっと速いまま」ならディルデガスト。"},
+  {g:["ディルデガスト"], cat:"ハント中", hunt:true, t:"ハント外で配置物を動かされると1個につき速度-0.1m/s(26個で最低の0.4m/sまで低下)。速度はハントごとにリセット",
+   n:"【基準】他のゴーストの速度はプレイヤーの行動で下げられない。ディルデガストだけは調査中に小物を拾う・家電を操作する等で1個につき-0.1m/s鈍足化できる(同じ物の2回目やゴースト自身が投げた物はノーカウント)。ハント毎に3m/sへ戻るので毎回動かし直すこと。"},
+];
+
+// ===== 数値問題 =====
+// g: 理解度画面でどのゴーストに紐付けるか(null = 共通知識)
+const NUMERIC = [
+  {g:null, q:"通常のゴーストがハントを開始できる正気度の閾値は?", opts:["70%","60%","50%","40%"], ans:2, cat:"ハント条件", hunt:true,
+   expl:"原則は平均正気度50%以下。判定は数秒ごとに行われ、正気度が低いほどハント発生率が上がる。デーモン(70%)やシェード(35%)など例外持ちが多数いる。"},
+  {g:"デーモン", q:"デーモンが通常時にハントを開始できる正気度の閾値は?", opts:["80%","70%","60%","50%"], ans:1, cat:"ハント条件", hunt:true,
+   expl:"通常のゴーストは50%以下でしかハントできないが、デーモンは70%。さらに特殊能力で正気度無視のハントも起こせる。"},
+  {g:"シェード", q:"シェードがハントを開始できる正気度の閾値は?", opts:["50%","45%","40%","35%"], ans:3, cat:"ハント条件", hunt:true,
+   expl:"通常50%に対しシェードは35%と低く、ハントが来るのが遅い。正気度を35〜50%に調整してハントが来なければ候補を絞れる。なお状態持ちを含めるとオバンボ(穏やか)の10%が最低。"},
+  {g:"デオヘン", q:"デオヘンがハントを開始できる正気度の閾値は?", opts:["50%","40%","30%","20%"], ans:1, cat:"ハント条件", hunt:true,
+   expl:"通常50%に対しデオヘンは40%。通常より10%分ハントが来にくく、序盤は安全に証拠集めができる。"},
+  {g:"妖怪", q:"妖怪が「近くの声」に反応してハントを仕掛けてくる可能性がある正気度は?", opts:["100%以下","90%以下","80%以下","65%以下"], ans:2, cat:"ハント条件", hunt:true,
+   expl:"平均80%以下で、ゴーストの2m以内で声を出すとハントされることがある。静かにしていれば通常の50%。"},
+  {g:"メアー", q:"メアーが「照明が消えた場所」でハントを開始できる閾値は?", opts:["70%","60%","50%","40%"], ans:1, cat:"ハント条件", hunt:true,
+   expl:"通常50%に対し、メアーは暗所60%(早く来る)/明所40%(来にくい)。照明の管理が最大の対策になる。"},
+  {g:"雷獣", q:"雷獣が「電子機器の近く」でハントを開始できる閾値は?", opts:["75%","70%","65%","55%"], ans:2, cat:"ハント条件", hunt:true,
+   expl:"通常50%に対し、雷獣は起動中の電子機器の近くにいる時だけ65%からハントできる(複数置いても65%より上がらない)。機材を大量設置していると正気度が高いうちからハントが来る。"},
+  {g:"セーイ", q:"老化していない初期状態のセーイがハントを開始できる閾値は?", opts:["85%","75%","65%","55%"], ans:1, cat:"ハント条件", hunt:true,
+   expl:"通常50%に対し、初期セーイは75%と特殊ハントを除けばゴースト中随一の高さ。老化1回ごとに-6%され、最終的に15%まで下がる。"},
+  {g:"スピリット", q:"スピリットに浄化香を使った時のハント抑止時間は?", opts:["90秒","120秒","180秒","300秒"], ans:2, cat:"アイテム対策",
+   expl:"スピリットは180秒。通常は90秒、デーモンは60秒。時間を計れば判別できる。"},
+  {g:null, q:"通常のゴーストへの浄化香によるハント抑止時間は?", opts:["60秒","90秒","120秒","180秒"], ans:1, cat:"アイテム対策",
+   expl:"通常90秒。スピリット180秒・デーモン60秒が例外。"},
+  {g:null, q:"通常のゴーストの基本ハント速度は?", opts:["1.4m/s","1.7m/s","2.0m/s","2.5m/s"], ans:1, cat:"移動速度", hunt:true,
+   expl:"基本1.7m/s。視線が通ると徐々に加速し、約26秒で最大速度に達する。"},
+  {g:"レヴナント", q:"レヴナントがプレイヤーを発見した時のハント速度は?", opts:["2.0m/s","2.5m/s","3.0m/s","3.5m/s"], ans:2, cat:"移動速度", hunt:true,
+   expl:"通常のハント速度1.7m/sに対し、発見時3m/s(プレイヤーの走りより速い)、見失うと1m/s。3m/sはデオヘン(遠距離)やディルデガスト(基本速度)と並ぶ最速級。"},
+  {g:"デーモン", q:"デーモンのハント終了後のクールダウン時間は?", opts:["15秒","20秒","25秒","30秒"], ans:1, cat:"ハント中", hunt:true,
+   expl:"通常25秒のところデーモンは20秒。ハント間隔が20〜25秒ならデーモン確定級。"},
+  {g:"妖怪", q:"妖怪がハント中に声や電子機器を感知できる範囲は?", opts:["約2.5m","約5m","約9m","約15m"], ans:0, cat:"ハント中", hunt:true,
+   expl:"通常9mのところ妖怪は2.5m。少し離れて黙っていればまず見つからない。"},
+  {g:"雷獣", q:"雷獣がハント中に電子機器(懐中電灯等)を誤作動させる範囲は?", opts:["約5m","約10m","約15m","約20m"], ans:2, cat:"ハント中", hunt:true,
+   expl:"通常約10mに対し雷獣は約15m。「まだ遠いのにライトが乱れる」で判別できる。ただし声の探知範囲は通常と同じ。"},
+  {g:"ハントゥ", q:"氷点下(0℃以下)の部屋でのハントゥのハント速度は?", opts:["2.1m/s","2.5m/s","2.7m/s","3.0m/s"], ans:2, cat:"移動速度", hunt:true,
+   expl:"15℃以上で1.4m/s、0℃〜3℃で2.5m/s、氷点下で2.7m/s。温度だけで速度が決まり視認加速はしない。"},
+  {g:"マイリング", q:"マイリングのハント中の足音・声が聞こえる範囲は?(通常20m)", opts:["6m","9m","12m","15m"], ans:2, cat:"ハント中", hunt:true,
+   expl:"通常20mに対し12m。電子機器の誤作動(10m)とほぼ同時に足音が聞こえたらマイリング。"},
+  {g:"モーロイ", q:"ハント中のモーロイに浄化香を当てた時の目くらまし時間は?(通常5秒)", opts:["6秒","7.5秒","10秒","12秒"], ans:1, cat:"アイテム対策", hunt:true,
+   expl:"通常5秒に対しモーロイは7.5秒。この2.5秒の差で判別でき、逃げる時間も稼ぎやすい。"},
+  {g:"コルモス", q:"コルモスが「走っている」プレイヤーの足音を感知できる範囲は?", opts:["10m","20m","30m","40m"], ans:2, cat:"ハント中", hunt:true,
+   expl:"しゃがみ歩き10m/直立歩行20m/走り30m。感知すると2.21m/s固定で追ってくる。"},
+  {g:"ディルデガスト", q:"配置物が動かされていない時のディルデガストの基本ハント速度は?", opts:["2.25m/s","2.5m/s","2.75m/s","3.0m/s"], ans:3, cat:"移動速度", hunt:true,
+   expl:"基本3m/sは全ゴースト最速級。ハント外で配置物を動かすと1個につき-0.1m/s、26個で0.4m/sまで落とせる。"},
+];
+
+// 問題ごとの永続キー(文面を変えるとその問題の成績はリセットされる)
+FACTS.forEach(f => f.key = "F|" + f.g[0] + "|" + f.t.slice(0, 24));
+NUMERIC.forEach(n => n.key = "N|" + n.q.slice(0, 28));
+
+// ===== ユーティリティ =====
+const rand = n => Math.floor(Math.random()*n);
+const pick = arr => arr[rand(arr.length)];
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=rand(i+1); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+// ミミックは何でも模倣するため、誤答選択肢から除外
+function distractorPool(fact){
+  const banned = new Set([...fact.g, ...(fact.ex||[]), "ミミック"]);
+  return GHOSTS.filter(g => !banned.has(g));
+}
+
+// ===== 成績(通算 + 問題別) =====
+const stats = {correct:0, total:0, streak:0, best:0};
+let qstats = {}; // key -> [出題回数, 正解回数, 現在の連続正解]
+try{
+  const saved = JSON.parse(localStorage.getItem("phasmoQuizStats") || "null");
+  if(saved && typeof saved.correct === "number"){
+    Object.assign(stats, {correct:saved.correct||0, total:saved.total||0, best:saved.best||0});
+  }
+  const savedQ = JSON.parse(localStorage.getItem("phasmoQuizQ") || "null");
+  if(savedQ && typeof savedQ === "object") qstats = savedQ;
+}catch(e){}
+
+function saveStats(){
+  try{
+    localStorage.setItem("phasmoQuizStats", JSON.stringify({correct:stats.correct, total:stats.total, best:stats.best}));
+    localStorage.setItem("phasmoQuizQ", JSON.stringify(qstats));
+  }catch(e){}
+}
+
+// 問題別成績: 「3回連続正解」で習得扱い(まぐれ当たり排除)
+const MASTER_STREAK = 3;
+function qstat(key){
+  const s = qstats[key];
+  return s ? [s[0]||0, s[1]||0, s[2]||0] : [0,0,0];
+}
+function isMastered(key){ return qstat(key)[2] >= MASTER_STREAK; }
+function recordQ(key, ok){
+  const s = qstat(key);
+  s[0]++;
+  if(ok){ s[1]++; s[2]++; } else { s[2] = 0; }
+  qstats[key] = s;
+}
+function renderStats(){
+  document.getElementById("stCorrect").textContent = stats.correct;
+  document.getElementById("stTotal").textContent = stats.total;
+  document.getElementById("stStreak").textContent = stats.streak;
+  document.getElementById("stBest").textContent = stats.best;
+  document.getElementById("stRate").textContent =
+    stats.total ? Math.round(100*stats.correct/stats.total) + "%" : "-";
+}
+
+// ===== 問題生成 =====
+const recent = [];
+function remember(key){ recent.push(key); if(recent.length > 18) recent.shift(); }
+function isRecent(key){ return recent.includes(key); }
+
+// 未出題・未習得の問題を優先し、習得済みはたまに復習として出す
+function pickWeighted(items){
+  const weights = items.map(it=>{
+    if(isRecent(it.key)) return 0.001;
+    const [a,,st] = qstat(it.key);
+    if(st >= MASTER_STREAK) return 0.15; // 習得済み: 低頻度の復習
+    if(a === 0) return 1.4;              // 未出題: 優先
+    return 1.0;                          // 挑戦中
+  });
+  let r = Math.random() * weights.reduce((x,y)=>x+y, 0);
+  for(let i=0;i<items.length;i++){ r -= weights[i]; if(r <= 0) return items[i]; }
+  return items[items.length-1];
+}
+
+function makeWhichQ(fact){
+  remember(fact.key);
+  const answer = pick(fact.g);
+  const options = shuffle([answer, ...shuffle(distractorPool(fact)).slice(0,3)]);
+  return {
+    type:"どのゴースト?", cat:fact.cat, hunt:!!fact.hunt, key:fact.key,
+    q:`次の特徴を持つゴーストは?\n「${fact.t}」`,
+    options, answer,
+    expl:`これは <b>${fact.g.join("・")}</b> の特徴。` + (fact.n ? `<br>${fact.n}` : "")
+  };
+}
+
+function makeNumericQ(item){
+  remember(item.key);
+  return {
+    type:"数値クイズ", cat:item.cat, hunt:!!item.hunt, key:item.key,
+    q:item.q,
+    options:item.opts.slice(),
+    answer:item.opts[item.ans],
+    expl:item.expl
+  };
+}
+
+function nextQuestion(){
+  const pool = [
+    ...FACTS.map(f => ({kind:"fact", key:f.key, ref:f})),
+    ...NUMERIC.map(n => ({kind:"num", key:n.key, ref:n})),
+  ];
+  const it = pickWeighted(pool);
+  if(it.kind === "num") return makeNumericQ(it.ref);
+  return makeWhichQ(it.ref);
+}
+
+// ===== クイズ表示 =====
+let current = null;
+let qCount = 0;
+
+const elQ = document.getElementById("qtext");
+const elAnswers = document.getElementById("answers");
+const elFeedback = document.getElementById("feedback");
+const elVerdict = document.getElementById("verdict");
+const elExpl = document.getElementById("expl");
+const elQRecord = document.getElementById("qrecord");
+
+function showQuestion(){
+  current = nextQuestion();
+  qCount++;
+  document.getElementById("qno").textContent = "Q" + qCount;
+  document.getElementById("chipCat").textContent = current.cat;
+  const chipType = document.getElementById("chipType");
+  chipType.textContent = current.hunt ? "⚠ ハント関連 / " + current.type : current.type;
+  chipType.className = current.hunt ? "chip hunt" : "chip";
+
+  elQ.textContent = current.q;
+  elFeedback.hidden = true;
+  elAnswers.className = "answers";
+  elAnswers.innerHTML = "";
+  current.options.forEach(opt=>{
+    const b = document.createElement("button");
+    b.className = "ans";
+    b.textContent = opt;
+    b.addEventListener("click", ()=>answer(b, opt));
+    elAnswers.appendChild(b);
+  });
+  const idk = document.createElement("button");
+  idk.className = "ans idk";
+  idk.textContent = "分からん…";
+  idk.addEventListener("click", ()=>answer(idk, IDK));
+  elAnswers.appendChild(idk);
+  elAnswers.querySelector("button")?.focus({preventScroll:true});
+}
+
+const IDK = Symbol("idk");
+
+function answer(btn, opt){
+  const ok = opt === current.answer;
+  const idk = opt === IDK;
+  for(const b of elAnswers.querySelectorAll("button")){
+    b.disabled = true;
+    if(b.textContent === current.answer) b.classList.add("correct");
+  }
+  if(!ok && !idk) btn.classList.add("wrong");
+
+  stats.total++;
+  if(ok){ stats.correct++; stats.streak++; if(stats.streak > stats.best) stats.best = stats.streak; }
+  else stats.streak = 0;
+  recordQ(current.key, ok);
+  saveStats();
+  renderStats();
+
+  elVerdict.textContent = ok ? "せいかい!"
+    : idk ? "正解は「" + current.answer + "」── おぼえよう!"
+    : "ざんねん… 正解は「" + current.answer + "」";
+  elVerdict.className = "verdict " + (ok ? "ok" : "ng");
+  elExpl.innerHTML = current.expl;
+  const [a, c, st] = qstat(current.key);
+  const mline = st >= MASTER_STREAK
+    ? `<b>習得済み!</b>(${st}回連続正解中)`
+    : `習得まで あと<b>${MASTER_STREAK - st}</b>回連続正解`;
+  elQRecord.innerHTML =
+    `この問題: 連続 <b>${Math.min(st, MASTER_STREAK)}</b>/${MASTER_STREAK} ・ 通算 ${c}/${a}回正解 ── ${mline}`;
+  elFeedback.hidden = false;
+  document.getElementById("nextBtn").focus({preventScroll:true});
+}
+
+// ===== 理解度画面 =====
+// ゴースト -> 紐付く問題リスト(特徴 + 数値)
+function questionsFor(name){
+  const qs = [];
+  for(const f of FACTS){
+    if(f.g.includes(name)) qs.push({key:f.key, text:f.t, hunt:!!f.hunt});
+  }
+  for(const n of NUMERIC){
+    if(n.g === name) qs.push({key:n.key, text:n.q, hunt:!!n.hunt});
+  }
+  return qs;
+}
+function commonQuestions(){
+  return NUMERIC.filter(n => n.g === null).map(n => ({key:n.key, text:n.q, hunt:!!n.hunt}));
+}
+
+// 習得度 = 各問題の連続正解の進み(min(連続,3)/3)の平均。3回連続正解で習得=100%
+function masteryOf(qs){
+  let prog = 0, asked = 0, mastered = 0, a = 0, c = 0;
+  for(const q of qs){
+    const [qa, qc, st] = qstat(q.key);
+    if(qa > 0){ asked++; a += qa; c += qc; }
+    prog += Math.min(st, MASTER_STREAK) / MASTER_STREAK;
+    if(st >= MASTER_STREAK) mastered++;
+  }
+  return {
+    pct: qs.length ? Math.round(100 * prog / qs.length) : 0,
+    asked, mastered, total: qs.length, a, c
+  };
+}
+
+function markFor(qa, st){
+  if(qa === 0) return ["-", "lv-none"];
+  if(st >= MASTER_STREAK) return ["◎", "lv-hi"];
+  if(st > 0) return ["○", "lv-mid"];
+  return ["✕", "lv-lo"];
+}
+function lvClass(pct, asked){
+  if(asked === 0) return "lv-none";
+  if(pct >= 80) return "lv-hi";
+  if(pct >= 50) return "lv-mid";
+  return "lv-lo";
+}
+
+const openCards = new Set(); // 再描画しても展開状態を保つ
+
+function renderGCard(name, qs){
+  const m = masteryOf(qs);
+  const d = document.createElement("details");
+  d.className = "gcard";
+  const rows = qs.map(q=>{
+    const [qa, qc, st] = qstat(q.key);
+    const [mark, cls] = markFor(qa, st);
+    const cnt = qa === 0 ? "未出題"
+      : st >= MASTER_STREAK ? `習得済み ・ 通算${qc}/${qa}回`
+      : `連続${Math.min(st, MASTER_STREAK)}/${MASTER_STREAK} ・ 通算${qc}/${qa}回`;
+    return `<div class="qrow${q.hunt ? " hunt" : ""}">
+      <span class="mark ${cls}">${mark}</span>
+      <span class="txt">${q.text}</span>
+      <span class="cnt">${cnt}</span>
+    </div>`;
+  }).join("");
+  const done = m.mastered === m.total && m.total > 0;
+  d.innerHTML = `
+    <summary>
+      <span class="gname">${name}</span>
+      <span class="gbarwrap">
+        <span class="gbar"><i style="width:${m.pct}%"></i></span>
+        <span class="gsub">習得 ${m.mastered}/${m.total}問 ・ 出題済み ${m.asked}/${m.total}問</span>
+      </span>
+      <span class="gpct ${lvClass(m.pct, m.asked)}">${m.asked === 0 ? "未" : done ? "完" : m.pct + "%"}</span>
+    </summary>
+    <div class="gdetail">${rows}</div>`;
+  d.open = openCards.has(name);
+  d.addEventListener("toggle", ()=>{
+    if(d.open) openCards.add(name); else openCards.delete(name);
+  });
+  return d;
+}
+
+function renderMastery(){
+  const glist = document.getElementById("glist");
+  const glistCommon = document.getElementById("glistCommon");
+  glist.innerHTML = "";
+  glistCommon.innerHTML = "";
+
+  let ghostsDone = 0;
+  for(const name of GHOSTS){
+    const qs = questionsFor(name);
+    const m = masteryOf(qs);
+    if(m.mastered === m.total && m.total > 0) ghostsDone++;
+    glist.appendChild(renderGCard(name, qs));
+  }
+  glistCommon.appendChild(renderGCard(COMMON, commonQuestions()));
+
+  // 総合習得度は全問題ベース
+  const all = [...FACTS, ...NUMERIC].map(x => ({key:x.key}));
+  const om = masteryOf(all);
+  document.getElementById("ovPct").textContent =
+    om.mastered === om.total ? "完全習得!" : om.pct + "%";
+  document.getElementById("ovBar").style.width = om.pct + "%";
+  document.getElementById("ovSub").textContent =
+    `習得 ${om.mastered}/${om.total}問 ・ 出題済み ${om.asked}/${om.total}問 ・ 完全習得ゴースト ${ghostsDone}/${GHOSTS.length}体`;
+}
+
+// すべて展開 / 閉じる
+document.getElementById("expandAllBtn").addEventListener("click", ()=>{
+  const cards = document.querySelectorAll("details.gcard");
+  const anyClosed = [...cards].some(d => !d.open);
+  cards.forEach(d => d.open = anyClosed);
+  document.getElementById("expandAllBtn").textContent = anyClosed ? "すべて閉じる" : "すべて展開";
+});
+
+// ===== タブ切り替え =====
+const tabQuiz = document.getElementById("tabQuiz");
+const tabMastery = document.getElementById("tabMastery");
+const viewQuiz = document.getElementById("viewQuiz");
+const viewMastery = document.getElementById("viewMastery");
+let view = "quiz";
+
+function switchView(v){
+  view = v;
+  const quiz = v === "quiz";
+  tabQuiz.classList.toggle("active", quiz);
+  tabMastery.classList.toggle("active", !quiz);
+  viewQuiz.style.display = quiz ? "flex" : "none";
+  viewMastery.style.display = quiz ? "none" : "flex";
+  if(!quiz) renderMastery();
+}
+tabQuiz.addEventListener("click", ()=>switchView("quiz"));
+tabMastery.addEventListener("click", ()=>switchView("mastery"));
+
+// ===== その他操作 =====
+document.getElementById("nextBtn").addEventListener("click", showQuestion);
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  stats.correct = 0; stats.total = 0; stats.streak = 0; stats.best = 0;
+  qstats = {};
+  saveStats(); renderStats();
+  if(view === "mastery") renderMastery();
+});
+
+// キーボード: 1-4で回答、0/5で「分からん」、Enterで次へ
+document.addEventListener("keydown", e=>{
+  if(view !== "quiz") return;
+  if(!elFeedback.hidden && e.key === "Enter"){ showQuestion(); return; }
+  if(elFeedback.hidden && (e.key === "0" || e.key === "5")){
+    elAnswers.querySelector(".idk:not(:disabled)")?.click();
+    return;
+  }
+  const n = parseInt(e.key, 10);
+  if(n >= 1 && n <= 4 && elFeedback.hidden){
+    const btns = elAnswers.querySelectorAll("button:not(.idk):not(:disabled)");
+    if(btns[n-1]) btns[n-1].click();
+  }
+});
+
+renderStats();
+showQuestion();
+</script>
+</body>
+</html>
